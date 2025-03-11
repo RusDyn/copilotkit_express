@@ -82,8 +82,8 @@ export async function createContext(
   contextLogger: typeof logger,
   properties: CopilotRequestContextProperties = {},
 ): Promise<Partial<GraphQLContext>> {
-  logger.debug({ copilotKitContext }, "Creating GraphQL context");
-  logger.info(initialContext);
+  console.log({ copilotKitContext }, "Creating GraphQL context");
+  console.log(initialContext);
   const ctx: GraphQLContext = {
     ...initialContext,
     _copilotkit: {
