@@ -24,6 +24,11 @@ const runtime = new CopilotRuntime({
   remoteEndpoints: [
     { url: REMOTE_URL },
   ],
+  middleware: {
+    onBeforeRequest: (options) => {
+      console.log(options.properties)
+    }
+  }
 });
 
 // Create the handler function
