@@ -5,16 +5,41 @@ import {
   CopilotRuntime,
   CreateCopilotRuntimeServerOptions,
   ExperimentalEmptyAdapter,
-  getCommonConfig
+  getCommonConfig,
 } from '@copilotkit/runtime';
-import { createLogger, createYoga, LogLevel, YogaInitialContext } from 'graphql-yoga';
+import { 
+  createYoga, LogLevel, YogaInitialContext } from 'graphql-yoga';
+import {pino as createPinoLogger} from "pino";
+import pretty from "pino-pretty";
 
 // Load environment variables
 config();
 
 const logLevel = (process.env.LOG_LEVEL as LogLevel) || "error";
-const contextLogger = createLogger(logLevel);
-const logger = contextLogger;
+
+export function createLogger(options?: { level?: LogLevel; component?: string }) {
+  const { level, component } = options || {};
+  const stream = pretty({ colorize: true });
+
+  const logger = createPinoLogger(
+    {
+      level: process.env.LOG_LEVEL || level || "error",
+      redact: {
+        paths: ["pid", "hostname"],
+        remove: true,
+      },
+    },
+    stream,
+  );
+
+  if (component) {
+    return logger.child({ component });
+  } else {
+    return logger;
+  }
+}
+
+const logger = createLogger();
 export type GraphQLContext = YogaInitialContext & {
   _copilotkit: CreateCopilotRuntimeServerOptions;
   properties: CopilotRequestContextProperties;
@@ -73,6 +98,7 @@ export async function createContext(
 
 
 const commonConfig = getCommonConfig(options)
+const contextLogger = createLogger({ level: logLevel });
 commonConfig.context = (ctx: YogaInitialContext): Promise<Partial<GraphQLContext>> =>
   createContext(ctx, options, contextLogger, options.properties)
 // Create the handler function
