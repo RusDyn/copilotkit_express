@@ -1,13 +1,25 @@
 import express from 'express';
 import { config } from 'dotenv';
 import {
+  CopilotRequestContextProperties,
   CopilotRuntime,
+  CreateCopilotRuntimeServerOptions,
   ExperimentalEmptyAdapter,
-  copilotRuntimeNodeHttpEndpoint
+  getCommonConfig
 } from '@copilotkit/runtime';
+import { createLogger, createYoga, LogLevel, YogaInitialContext } from 'graphql-yoga';
 
 // Load environment variables
 config();
+
+const logLevel = (process.env.LOG_LEVEL as LogLevel) || "error";
+const contextLogger = createLogger(logLevel);
+const logger = contextLogger;
+export type GraphQLContext = YogaInitialContext & {
+  _copilotkit: CreateCopilotRuntimeServerOptions;
+  properties: CopilotRequestContextProperties;
+  logger: any;
+};
 
 // Get environment variables with type safety
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -26,16 +38,47 @@ const runtime = new CopilotRuntime({
   ],
   middleware: {
     onBeforeRequest: (options) => {
-      console.log(options.properties)
+      
+      console.log(options)
     }
   }
 });
 
-// Create the handler function
-const runtimeMiddleware = copilotRuntimeNodeHttpEndpoint({
+const options = {
   endpoint: '/copilotkit',
+  properties: {},
   runtime,
   serviceAdapter,
+}
+
+export async function createContext(
+  initialContext: YogaInitialContext,
+  copilotKitContext: CreateCopilotRuntimeServerOptions,
+  contextLogger: typeof logger,
+  properties: CopilotRequestContextProperties = {},
+): Promise<Partial<GraphQLContext>> {
+  logger.debug({ copilotKitContext }, "Creating GraphQL context");
+  logger.info(initialContext);
+  const ctx: GraphQLContext = {
+    ...initialContext,
+    _copilotkit: {
+      ...copilotKitContext,
+    },
+    properties: { ...properties },
+    logger: contextLogger,
+  };
+  return ctx;
+}
+
+
+
+const commonConfig = getCommonConfig(options)
+commonConfig.context = (ctx: YogaInitialContext): Promise<Partial<GraphQLContext>> =>
+  createContext(ctx, options, contextLogger, options.properties)
+// Create the handler function
+const runtimeMiddleware = createYoga({
+  ...commonConfig,
+  graphqlEndpoint: '/copilotkit',
 });
 
 // Apply the handler as Express middleware
