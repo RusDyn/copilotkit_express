@@ -5,11 +5,10 @@ import {
   CopilotRuntime,
   CreateCopilotRuntimeServerOptions,
   ExperimentalEmptyAdapter,
-  getCommonConfig,
-  createLogger
+  getCommonConfig
 } from '@copilotkit/runtime';
 import { 
-  createYoga, LogLevel, YogaInitialContext } from 'graphql-yoga';
+  createYoga, YogaInitialContext } from 'graphql-yoga';
 import { createAuthContext } from './create-auth-context.js'
 import { clerkMiddleware, requireAuth } from '@clerk/express';
 
@@ -18,8 +17,6 @@ config();
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const REMOTE_URL = process.env.REMOTE_URL || 'https://your-remote-endpoint.com';
-const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "error";
-const contextLogger = createLogger({ level: LOG_LEVEL });
 
 // Get environment variables with type safety
 
@@ -54,7 +51,7 @@ const options: CreateCopilotRuntimeServerOptions = {
 }
 
 const commonConfig = getCommonConfig(options)
-commonConfig.context = (ctx: YogaInitialContext) => createAuthContext(ctx, options, contextLogger, properties)
+commonConfig.context = (ctx: YogaInitialContext) => createAuthContext(ctx, options, commonConfig.logging, properties)
 
 // Create the handler function
 const runtimeMiddleware = createYoga({
