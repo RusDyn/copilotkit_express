@@ -3,12 +3,11 @@ import { CopilotRequestContextProperties } from "@copilotkit/runtime";
 import { YogaInitialContext } from "graphql-yoga";
 import { createContext as createCopilotContext } from "@copilotkit/runtime";
 import { getAuth } from '@clerk/express';
-import { Logger } from "pino";
 
 export async function createAuthContext(
     initialContext: YogaInitialContext,
     copilotKitContext: CreateCopilotRuntimeServerOptions,
-    contextLogger: Logger<never, boolean>,
+    contextLogger: any,
     properties: CopilotRequestContextProperties = {},
   ) {
     let enhancedProperties: CopilotRequestContextProperties = properties;
