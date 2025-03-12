@@ -70,17 +70,31 @@ const yoga = createYoga({
   graphqlEndpoint: '/copilotkit',
   graphiql: false,
   context: async (ctx: YogaInitialContext) => {
-    // The auth data will be passed through the express middleware chain
+    console.log('--------------------------------');
+    console.log('Raw request:', ctx.request);
+    console.log('Request keys:', Object.keys(ctx.request));
 
-    console.log('--------------------------------');
-    console.log(ctx.request);
-    console.log('--------------------------------');
+    // Log the raw property to see the underlying Express request
+    console.log('Raw property:', (ctx.request as any).raw);
+    console.log('Raw keys:', Object.keys((ctx.request as any).raw));
+
+    // Try to access auth from different possible locations
+    const expressReq = (ctx.request as any).raw;
+    console.log('Auth from raw:', expressReq?.auth);
+
     const enhancedProperties: CopilotRequestContextProperties = {
       ...properties,
-      //userId: auth?.userId || '',
-      //sessionId: auth?.sessionId || '',
-      //organization: auth?.orgId || '',
+      userId: expressReq?.auth?.userId || '',
+      sessionId: expressReq?.auth?.sessionId || '',
+      organization: expressReq?.auth?.orgId || '',
     };
+
+    console.log('Auth Context:', {
+      userId: expressReq?.auth?.userId,
+      sessionId: expressReq?.auth?.sessionId,
+      organization: expressReq?.auth?.orgId,
+    });
+
     return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
   },
 });
@@ -88,7 +102,6 @@ const yoga = createYoga({
 // Create a router for the protected endpoint
 const router = express.Router();
 
-// Add Clerk middleware to process auth before reaching Yoga
 router.use(clerkMiddleware());
 router.use(requireAuth());
 
