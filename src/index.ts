@@ -47,8 +47,10 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 const runtime = new CopilotRuntime({
   remoteEndpoints: [{ url: REMOTE_URL }],
   middleware: {
-    onBeforeRequest: options => {
-      console.log(options);
+    onBeforeRequest: ({ properties, threadId }) => {
+      const { userId, sessionId, orgId } = properties;
+      console.log(userId, sessionId, orgId, threadId);
+      // here we can check if the user is authorized to access the thread
     },
   },
 });
