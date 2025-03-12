@@ -10,7 +10,7 @@ import {
 } from '@copilotkit/runtime';
 import { createYoga, YogaInitialContext } from 'graphql-yoga';
 import { createContext as createCopilotContext } from '@copilotkit/runtime';
-import { clerkMiddleware, requireAuth, getAuth } from '@clerk/express';
+import { clerkMiddleware, requireAuth } from '@clerk/express';
 
 // Load environment variables
 config();
@@ -40,13 +40,6 @@ const corsOptions = {
 // Add CORS middleware first
 app.use(cors(corsOptions));
 
-// Create a router for the /copilotkit endpoint
-const router = express.Router();
-
-// Add Clerk middleware to the router
-router.use(clerkMiddleware());
-router.use(requireAuth());
-
 // Create service adapter
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
@@ -71,43 +64,42 @@ const options: CreateCopilotRuntimeServerOptions = {
 // Get common config
 const commonConfig = getCommonConfig(options);
 
-commonConfig.context = (ctx: YogaInitialContext) => {
-  let enhancedProperties: CopilotRequestContextProperties = properties;
-  try {
-    // Get auth data from Clerk
-    // @ts-ignore - We know this is an Express request
-    const auth = getAuth(ctx.request);
+// Create the Yoga handler
+const yoga = createYoga({
+  ...commonConfig,
+  graphqlEndpoint: '/copilotkit',
+  graphiql: false,
+  context: async (ctx: YogaInitialContext) => {
+    // The auth data will be passed through the express middleware chain
+    console.log(ctx.request);
+    const auth = (ctx.request as any).auth;
 
-    // Add user data to properties, ensuring non-null values
-    enhancedProperties = {
+    const enhancedProperties: CopilotRequestContextProperties = {
       ...properties,
-      userId: auth.userId || '',
-      sessionId: auth.sessionId || '',
-      organization: auth.orgId || '',
+      userId: auth?.userId || '',
+      sessionId: auth?.sessionId || '',
+      organization: auth?.orgId || '',
     };
 
     console.log('Auth Context:', {
-      userId: auth.userId,
-      sessionId: auth.sessionId,
-      organization: auth.orgId,
+      userId: auth?.userId,
+      sessionId: auth?.sessionId,
+      organization: auth?.orgId,
     });
-  } catch (error) {
-    console.error('Error getting auth context:', error);
-  }
 
-  // Return context without auth properties if there's an error
-  return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
-};
-
-// Create the handler function
-const runtimeMiddleware = createYoga({
-  ...commonConfig,
-  graphqlEndpoint: '/copilotkit',
-  graphiql: false, // Disable GraphiQL in production
+    return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
+  },
 });
 
-// Add the Yoga middleware last
-router.use(runtimeMiddleware);
+// Create a router for the protected endpoint
+const router = express.Router();
+
+// Add Clerk middleware to process auth before reaching Yoga
+router.use(clerkMiddleware());
+router.use(requireAuth());
+
+// Add Yoga after Clerk middleware
+router.use(yoga);
 
 // Mount the router at /copilotkit
 app.use('/copilotkit', router);
