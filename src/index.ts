@@ -10,8 +10,8 @@ import {
 } from '@copilotkit/runtime';
 import { 
   createYoga, YogaInitialContext } from 'graphql-yoga';
-import { createAuthContext } from './create-auth-context.js'
-import { clerkMiddleware, requireAuth } from '@clerk/express';
+import { createContext as createCopilotContext } from '@copilotkit/runtime';
+import { clerkMiddleware, requireAuth, getAuth } from '@clerk/express';
 
 // Load environment variables
 config();
@@ -72,7 +72,39 @@ const options: CreateCopilotRuntimeServerOptions = {
 }
 
 const commonConfig = getCommonConfig(options)
-commonConfig.context = (ctx: YogaInitialContext) => createAuthContext(ctx, options, commonConfig.logging, properties)
+commonConfig.context = (ctx: YogaInitialContext) => {
+  let enhancedProperties: CopilotRequestContextProperties = properties;
+  try {
+    // Get auth data from Clerk
+    // @ts-ignore - We know this is an Express request
+    const auth = getAuth(initialContext.request);
+    
+    // Add user data to properties, ensuring non-null values
+    enhancedProperties = {
+      ...properties,
+      userId: auth.userId || '',
+      sessionId: auth.sessionId || '',
+      organization: auth.orgId || '',
+    };
+
+    console.log("Auth Context:", {
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      organization: auth.orgId
+    });
+  } catch (error) {
+    console.error("Error getting auth context:", error);
+    
+  }
+
+  // Return context without auth properties if there's an error
+  return createCopilotContext(
+    ctx,
+    options,
+    commonConfig.logging,
+    enhancedProperties
+  );
+}
 
 // Create the handler function
 const runtimeMiddleware = createYoga({
