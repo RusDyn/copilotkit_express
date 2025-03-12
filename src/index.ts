@@ -1,5 +1,6 @@
 import express from 'express';
 import { config } from 'dotenv';
+import cors from 'cors';
 import {
   CopilotRequestContextProperties,
   CopilotRuntime,
@@ -22,6 +23,25 @@ const REMOTE_URL = process.env.REMOTE_URL || 'https://your-remote-endpoint.com';
 
 // Create Express app
 const app = express();
+
+// Configure CORS for Express
+const corsOptions = {
+  origin: true, // Allow any origin
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: [
+    'accept',
+    'authorization',
+    'content-type',
+    'x-copilotkit-runtime-client-gql-version',
+    'sec-ch-ua',
+    'sec-ch-ua-mobile',
+    'sec-ch-ua-platform'
+  ],
+};
+
+// Add CORS middleware
+app.use(cors(corsOptions));
 
 // Add Clerk middleware globally
 app.use(clerkMiddleware());
@@ -57,6 +77,7 @@ commonConfig.context = (ctx: YogaInitialContext) => createAuthContext(ctx, optio
 const runtimeMiddleware = createYoga({
   ...commonConfig,
   graphqlEndpoint: '/copilotkit',
+  graphiql: false, // Disable GraphiQL in production
 });
 
 // Apply the handler as Express middleware with Clerk authentication
