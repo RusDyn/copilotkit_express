@@ -71,12 +71,8 @@ const yoga = createYoga({
   graphiql: false,
   context: async (ctx: YogaInitialContext) => {
     console.log('--------------------------------');
-    console.log('Raw request:', ctx.request);
-    console.log('Request keys:', Object.keys(ctx.request));
-
-    // Log the raw property to see the underlying Express request
-    console.log('Raw property:', (ctx.request as any).raw);
-    console.log('Raw keys:', Object.keys((ctx.request as any).raw));
+    console.log('Body init:', (ctx.request as any).bodyInit);
+    console.log('Auth:', (ctx.request as any).bodyInit?.auth);
 
     // Try to access auth from different possible locations
     const expressReq = (ctx.request as any).raw;
