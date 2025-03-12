@@ -6,10 +6,9 @@ import {
   CopilotRuntime,
   CreateCopilotRuntimeServerOptions,
   ExperimentalEmptyAdapter,
-  getCommonConfig
+  getCommonConfig,
 } from '@copilotkit/runtime';
-import { 
-  createYoga, YogaInitialContext } from 'graphql-yoga';
+import { createYoga, YogaInitialContext } from 'graphql-yoga';
 import { createContext as createCopilotContext } from '@copilotkit/runtime';
 import { clerkMiddleware, requireAuth, getAuth } from '@clerk/express';
 
@@ -34,7 +33,7 @@ const corsOptions = {
     'x-copilotkit-runtime-client-gql-version',
     'sec-ch-ua',
     'sec-ch-ua-mobile',
-    'sec-ch-ua-platform'
+    'sec-ch-ua-platform',
   ],
 };
 
@@ -53,32 +52,32 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 
 // Create runtime instance
 const runtime = new CopilotRuntime({
-  remoteEndpoints: [
-    { url: REMOTE_URL },
-  ],
+  remoteEndpoints: [{ url: REMOTE_URL }],
   middleware: {
-    onBeforeRequest: (options) => {
-      console.log(options)
-    }
-  }
+    onBeforeRequest: options => {
+      console.log(options);
+    },
+  },
 });
 
-const properties: CopilotRequestContextProperties = {}
+const properties: CopilotRequestContextProperties = {};
 const options: CreateCopilotRuntimeServerOptions = {
   endpoint: '/copilotkit',
   properties,
   runtime,
   serviceAdapter,
-}
+};
 
-const commonConfig = getCommonConfig(options)
+// Get common config
+const commonConfig = getCommonConfig(options);
+
 commonConfig.context = (ctx: YogaInitialContext) => {
   let enhancedProperties: CopilotRequestContextProperties = properties;
   try {
     // Get auth data from Clerk
     // @ts-ignore - We know this is an Express request
-    const auth = getAuth(initialContext.request);
-    
+    const auth = getAuth(ctx.request);
+
     // Add user data to properties, ensuring non-null values
     enhancedProperties = {
       ...properties,
@@ -87,24 +86,18 @@ commonConfig.context = (ctx: YogaInitialContext) => {
       organization: auth.orgId || '',
     };
 
-    console.log("Auth Context:", {
+    console.log('Auth Context:', {
       userId: auth.userId,
       sessionId: auth.sessionId,
-      organization: auth.orgId
+      organization: auth.orgId,
     });
   } catch (error) {
-    console.error("Error getting auth context:", error);
-    
+    console.error('Error getting auth context:', error);
   }
 
   // Return context without auth properties if there's an error
-  return createCopilotContext(
-    ctx,
-    options,
-    commonConfig.logging,
-    enhancedProperties
-  );
-}
+  return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
+};
 
 // Create the handler function
 const runtimeMiddleware = createYoga({
@@ -123,4 +116,4 @@ app.use('/copilotkit', router);
 app.listen(PORT, () => {
   console.log(`Copilot Runtime server listening at http://localhost:${PORT}/copilotkit`);
   console.log(process.env.REMOTE_URL);
-}); 
+});
