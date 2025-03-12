@@ -6,52 +6,28 @@ import {
   CreateCopilotRuntimeServerOptions,
   ExperimentalEmptyAdapter,
   getCommonConfig,
+  createLogger
 } from '@copilotkit/runtime';
 import { 
   createYoga, LogLevel, YogaInitialContext } from 'graphql-yoga';
-import {pino as createPinoLogger} from "pino";
-import pretty from "pino-pretty";
+import { createAuthContext } from './create-auth-context.js'
+import { clerkMiddleware, requireAuth } from '@clerk/express';
 
 // Load environment variables
 config();
 
-const logLevel = (process.env.LOG_LEVEL as LogLevel) || "error";
-
-export function createLogger(options?: { level?: LogLevel; component?: string }) {
-  const { level, component } = options || {};
-  const stream = pretty({ colorize: true });
-
-  const logger = createPinoLogger(
-    {
-      level: process.env.LOG_LEVEL || level || "error",
-      redact: {
-        paths: ["pid", "hostname"],
-        remove: true,
-      },
-    },
-    stream,
-  );
-
-  if (component) {
-    return logger.child({ component });
-  } else {
-    return logger;
-  }
-}
-
-const logger = createLogger();
-export type GraphQLContext = YogaInitialContext & {
-  _copilotkit: CreateCopilotRuntimeServerOptions;
-  properties: CopilotRequestContextProperties;
-  logger: any;
-};
-
-// Get environment variables with type safety
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const REMOTE_URL = process.env.REMOTE_URL || 'https://your-remote-endpoint.com';
+const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "error";
+const contextLogger = createLogger({ level: LOG_LEVEL });
+
+// Get environment variables with type safety
 
 // Create Express app
 const app = express();
+
+// Add Clerk middleware globally
+app.use(clerkMiddleware());
 
 // Create service adapter
 const serviceAdapter = new ExperimentalEmptyAdapter();
@@ -69,46 +45,25 @@ const runtime = new CopilotRuntime({
   }
 });
 
-const options = {
+const properties: CopilotRequestContextProperties = {}
+const options: CreateCopilotRuntimeServerOptions = {
   endpoint: '/copilotkit',
-  properties: {},
+  properties,
   runtime,
   serviceAdapter,
 }
 
-export async function createContext(
-  initialContext: YogaInitialContext,
-  copilotKitContext: CreateCopilotRuntimeServerOptions,
-  contextLogger: typeof logger,
-  properties: CopilotRequestContextProperties = {},
-): Promise<Partial<GraphQLContext>> {
-  console.log({ copilotKitContext }, "Creating GraphQL context");
-  console.log(initialContext);
-  const ctx: GraphQLContext = {
-    ...initialContext,
-    _copilotkit: {
-      ...copilotKitContext,
-    },
-    properties: { ...properties },
-    logger: contextLogger,
-  };
-  return ctx;
-}
-
-
-
 const commonConfig = getCommonConfig(options)
-const contextLogger = createLogger({ level: logLevel });
-commonConfig.context = (ctx: YogaInitialContext): Promise<Partial<GraphQLContext>> =>
-  createContext(ctx, options, contextLogger, options.properties)
+commonConfig.context = (ctx: YogaInitialContext) => createAuthContext(ctx, options, contextLogger, properties)
+
 // Create the handler function
 const runtimeMiddleware = createYoga({
   ...commonConfig,
   graphqlEndpoint: '/copilotkit',
 });
 
-// Apply the handler as Express middleware
-app.use('/copilotkit', runtimeMiddleware);
+// Apply the handler as Express middleware with Clerk authentication
+app.use('/copilotkit', requireAuth(), runtimeMiddleware);
 
 // Start server
 app.listen(PORT, () => {
