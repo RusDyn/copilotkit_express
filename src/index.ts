@@ -47,7 +47,7 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 const runtime = new CopilotRuntime({
   remoteEndpoints: [{ url: REMOTE_URL }],
   middleware: {
-    onBeforeRequest: options => {
+    onBeforeRequest: () => {
       //console.log(options);
     },
   },
