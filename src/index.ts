@@ -47,8 +47,8 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 const runtime = new CopilotRuntime({
   remoteEndpoints: [{ url: REMOTE_URL }],
   middleware: {
-    onBeforeRequest: () => {
-      //console.log(options);
+    onBeforeRequest: options => {
+      console.log(options);
     },
   },
 });
@@ -70,27 +70,15 @@ const yoga = createYoga({
   graphqlEndpoint: '/copilotkit',
   graphiql: false,
   context: async (ctx: YogaInitialContext) => {
-    console.log('--------------------------------');
-    console.log('Body init:', (ctx.request as any).bodyInit);
-    console.log('Auth:', (ctx.request as any).bodyInit?.auth);
-
-    // Try to access auth from different possible locations
-    const expressReq = (ctx.request as any).raw;
-    console.log('Auth from raw:', expressReq?.auth);
+    const auth: { userId: string; sessionId: string; orgId: string } = (ctx.request as any).bodyInit
+      ?.auth;
 
     const enhancedProperties: CopilotRequestContextProperties = {
       ...properties,
-      userId: expressReq?.auth?.userId || '',
-      sessionId: expressReq?.auth?.sessionId || '',
-      organization: expressReq?.auth?.orgId || '',
+      userId: auth?.userId || '',
+      sessionId: auth?.sessionId || '',
+      organization: auth?.orgId || '',
     };
-
-    console.log('Auth Context:', {
-      userId: expressReq?.auth?.userId,
-      sessionId: expressReq?.auth?.sessionId,
-      organization: expressReq?.auth?.orgId,
-    });
-
     return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
   },
 });
