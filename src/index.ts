@@ -48,7 +48,7 @@ const runtime = new CopilotRuntime({
   remoteEndpoints: [{ url: REMOTE_URL }],
   middleware: {
     onBeforeRequest: options => {
-      console.log(options);
+      //console.log(options);
     },
   },
 });
@@ -72,15 +72,14 @@ const yoga = createYoga({
   context: async (ctx: YogaInitialContext) => {
     // The auth data will be passed through the express middleware chain
 
-    const auth = (ctx.request as any).auth;
-    console.log(auth);
-    console.log((ctx as any).auth);
-
+    console.log('--------------------------------');
+    console.log(ctx.request);
+    console.log('--------------------------------');
     const enhancedProperties: CopilotRequestContextProperties = {
       ...properties,
-      userId: auth?.userId || '',
-      sessionId: auth?.sessionId || '',
-      organization: auth?.orgId || '',
+      //userId: auth?.userId || '',
+      //sessionId: auth?.sessionId || '',
+      //organization: auth?.orgId || '',
     };
     return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
   },
