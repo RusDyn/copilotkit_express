@@ -19,8 +19,6 @@ config();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const REMOTE_URL = process.env.REMOTE_URL || 'https://your-remote-endpoint.com';
 
-// Get environment variables with type safety
-
 // Create Express app
 const app = express();
 
@@ -40,11 +38,15 @@ const corsOptions = {
   ],
 };
 
-// Add CORS middleware
+// Add CORS middleware first
 app.use(cors(corsOptions));
 
-// Add Clerk middleware globally
-app.use(clerkMiddleware());
+// Create a router for the /copilotkit endpoint
+const router = express.Router();
+
+// Add Clerk middleware to the router
+router.use(clerkMiddleware());
+router.use(requireAuth());
 
 // Create service adapter
 const serviceAdapter = new ExperimentalEmptyAdapter();
@@ -56,7 +58,6 @@ const runtime = new CopilotRuntime({
   ],
   middleware: {
     onBeforeRequest: (options) => {
-      
       console.log(options)
     }
   }
@@ -80,8 +81,11 @@ const runtimeMiddleware = createYoga({
   graphiql: false, // Disable GraphiQL in production
 });
 
-// Apply the handler as Express middleware with Clerk authentication
-app.use('/copilotkit', requireAuth(), runtimeMiddleware);
+// Add the Yoga middleware last
+router.use(runtimeMiddleware);
+
+// Mount the router at /copilotkit
+app.use('/copilotkit', router);
 
 // Start server
 app.listen(PORT, () => {
