@@ -71,8 +71,10 @@ const yoga = createYoga({
   graphiql: false,
   context: async (ctx: YogaInitialContext) => {
     // The auth data will be passed through the express middleware chain
-    console.log(ctx.request);
+
     const auth = (ctx.request as any).auth;
+    console.log(auth);
+    console.log((ctx as any).auth);
 
     const enhancedProperties: CopilotRequestContextProperties = {
       ...properties,
@@ -80,13 +82,6 @@ const yoga = createYoga({
       sessionId: auth?.sessionId || '',
       organization: auth?.orgId || '',
     };
-
-    console.log('Auth Context:', {
-      userId: auth?.userId,
-      sessionId: auth?.sessionId,
-      organization: auth?.orgId,
-    });
-
     return createCopilotContext(ctx, options, commonConfig.logging, enhancedProperties);
   },
 });
